@@ -5,11 +5,11 @@ import (
 	"github.com/KyawKyawThar/gowebtest/pkg/config"
 	"github.com/KyawKyawThar/gowebtest/pkg/handlers" //according to go module GitHub
 	"github.com/KyawKyawThar/gowebtest/pkg/render"
+	"github.com/alexedwards/scs/v2"
 	"log"
 	"net/http"
+	"time"
 )
-
-const portNumber = ":8080"
 
 //
 //func Home(w http.ResponseWriter, r *http.Request) {
@@ -70,11 +70,25 @@ const portNumber = ":8080"
 //
 //}
 
+const portNumber = ":8080"
+
+var app config.AppConfig //Only For Assign Data Type, so we don't need pointer
+
+var session *scs.SessionManager
+
 func main() {
 
-	var app config.AppConfig //Only For Assign Data Type and so we don't need pointer
+	app.InProduction = false
+
+	//For session
+	session = scs.New()
+	session.Lifetime = 24 * time.Hour
+	session.Cookie.Persist = true
+	session.Cookie.SameSite = http.SameSiteLaxMode
+	session.Cookie.Secure = app.InProduction
 
 	app.UseCache = false
+	app.Session = session
 
 	tc, err := render.CreateTemplateCache()
 
@@ -83,19 +97,27 @@ func main() {
 	}
 
 	app.TemplateCache = tc
+	render.NewTemplates(&app)
 
 	repo := handlers.NewRepo(&app)
 
 	handlers.RepoHandler(repo)
 	//fmt.Println("APP", app)
 
-	render.NewTemplates(&app)
-
-	http.HandleFunc("/", handlers.Repo.Home)
-	http.HandleFunc("/about", handlers.Repo.About)
+	//http.HandleFunc("/", handlers.Repo.Home)
+	//http.HandleFunc("/about", handlers.Repo.About)
 
 	fmt.Println(fmt.Sprintf("Server is running on port %s", portNumber))
 
-	_ = http.ListenAndServe(portNumber, nil)
+	//_ = http.ListenAndServe(portNumber, nil)
 
+	srv := http.Server{
+		Addr:    portNumber,
+		Handler: routes(&app),
+	}
+
+	err = srv.ListenAndServe()
+	if err != nil {
+		log.Fatal(err)
+	}
 }

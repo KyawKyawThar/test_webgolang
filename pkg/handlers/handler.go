@@ -34,6 +34,9 @@ func RepoHandler(r *Repository) {
 
 func (m *Repository) Home(w http.ResponseWriter, r *http.Request) {
 
+	remoteIP := r.RemoteAddr
+	m.App.Session.Put(r.Context(), "remote_ip", remoteIP)
+
 	//add business login in model.TemplateData
 	render.Template(w, "home.page.gohtml", &model.TemplateData{})
 
@@ -44,6 +47,9 @@ func (m *Repository) About(w http.ResponseWriter, r *http.Request) {
 	mapString := map[string]string{}
 
 	mapString["Hey Gopher"] = "Blockchain is my dream"
+
+	remoteIp := m.App.Session.GetString(r.Context(), "remote_ip")
+	mapString["remote_ip"] = remoteIp
 
 	//add business login in model.TemplateData
 
